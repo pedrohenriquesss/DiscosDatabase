@@ -10,6 +10,10 @@ app.use(express.json());
 app.use("/users", users);
 app.use("/discos", discos);
 
+app.use((req, res) => {
+    res.status(404).json({ erro: "Endpoint não encontrado" });
+});
+
 app.listen(port, () => {
  console.log(`backend listening on port ${port}`)
 })
