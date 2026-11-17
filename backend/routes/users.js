@@ -88,12 +88,12 @@ router.get("/", async (req, res) => {
 });
 
 // endpoint 4 POST /users
-// Adicionar 1 ou múltiplos Useres
+// Adicionar 1 ou múltiplos Users
 router.post("/", async (req, res) => {
     try {
         const users = await prepararUsers(req.body);
         if (!users) {
-            return res.status(400).json({ erro: "Envie um User ou 1 lista de Useres válida" });
+            return res.status(400).json({ erro: "Envie um User ou 1 lista de Users válida" });
         }
 
         if (!Array.isArray(req.body)) {
@@ -102,7 +102,7 @@ router.post("/", async (req, res) => {
         }
 
         const result = await usersCollection.insertMany(users);
-        res.status(201).json({ mensagem: "Useres adicionados com sucesso", insertedCount: result.insertedCount, insertedIds: result.insertedIds });
+        res.status(201).json({ mensagem: "Users adicionados com sucesso", insertedCount: result.insertedCount, insertedIds: result.insertedIds });
 
     } catch (error) {
         res.status(400).json({ error: error.message });

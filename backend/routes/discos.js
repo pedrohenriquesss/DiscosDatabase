@@ -107,7 +107,7 @@ router.get("/top/:limit", async (req, res) => {
     try {
         const topLimit = Number(req.params.limit);
         if (!Number.isInteger(topLimit) || topLimit < 1) {
-            return res.status(400).json({ erro: "O limite deve ser um inteiro positivo." });
+            return res.status(400).json({ erro: "O limite deve ser um inteiro positivo" });
         }
 
         const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -163,7 +163,7 @@ router.get("/ratings/:order", async (req, res) => {
     try {
         const order = req.params.order.toLowerCase();
         if (order !== "asc" && order !== "desc") {
-            return res.status(400).json({ erro: "A ordenação deve ser asc ou desc." });
+            return res.status(400).json({ erro: "A ordenação deve ser asc ou desc" });
         }
 
         const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -247,44 +247,103 @@ router.get("/star", async (req, res) => {
     }
 });
 
-// endpoint 14 GET /discos/:year
-// Lista de documentos avaliados no ano {year}
-router.get("/:year", async (req, res) => {
-    try {
-        const year = req.params.year;
+// endpoints 5 e 14
+// GET /discos/:id ou GET /discos/:year
+// Pesquisar documento pelo _id ou discos avaliados num determinado ano
 
-        if (!/^\d{4}$/.test(year)) {
-            return res.status(400).json({ erro: "O ano deve ter quatro algarismos." });
+router.get("/:parametro", async (req, res) => {
+    try {
+        const parametro = req.params.parametro;
+
+        // endpoint 14: pesquisar discos avaliados num determinado ano
+        if (/^\d{4}$/.test(parametro)) {
+
+            const year = parametro;
+
+            const page = Math.max(parseInt(req.query.page) || 1, 1);
+            const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 20);
+            const skip = (page - 1) * limit;
+
+            const avaliacoes = await usersCollection.aggregate([
+                { $unwind: "$avaliacoes" },
+                {
+                    $match: {
+                        "avaliacoes.data": { $regex: `^${year}-` }
+                    }
+                },
+                {
+                    $group: {
+                        _id: "$avaliacoes.item_id"
+                    }
+                }
+            ]).toArray();
+
+            const idsDiscos = avaliacoes.map(avaliacao => avaliacao._id);
+
+            const results = await discosCollection.find({
+                id: { $in: idsDiscos }
+            }).toArray();
+
+            return res.status(200).json({
+                page,
+                limit,
+                total: results.length,
+                totalPages: Math.ceil(results.length / limit),
+                results: results.slice(skip, skip + limit)
+            });
+
         }
 
-        const page = Math.max(parseInt(req.query.page) || 1, 1);
-        const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 20);
-        const skip = (page - 1) * limit;
 
-        const results = await discosCollection.aggregate([
-            {
-                $lookup: {
-                    from: "users",
-                    let: { discoId: "$id" },
-                    pipeline: [
-                        { $unwind: "$avaliacoes" },
-                        {
-                            $match: {
-                                $expr: {
-                                    $eq: ["$avaliacoes.item_id", "$$discoId"]
-                                },
-                                "avaliacoes.data": { $regex: `^${year}-` }
-                            }
-                        }
-                    ],
-                    as: "avaliacoes_ano"
-                }
-            },
-            { $match: { "avaliacoes_ano.0": { $exists: true } } },
-            { $project: { avaliacoes_ano: 0 } }
-        ]).toArray();
+        // endpoint 5: pesquisar disco pelo seu ObjectId
+        else if (/^[0-9a-fA-F]{24}$/.test(parametro)) {
 
-        res.status(200).json({ page, limit, total: results.length, totalPages: Math.ceil(results.length / limit), results: results.slice(skip, skip + limit) });
+            const discoId = validarId(parametro);
+
+            if (!discoId) {
+                return res.status(400).json({ erro: "ID do disco inválido" });
+            }
+
+            const disco = await discosCollection.findOne({ _id: discoId });
+
+            if (!disco) {
+                return res.status(404).json({ erro: "Disco não encontrado" });
+            }
+
+            const users = await usersCollection.find({
+                "avaliacoes.item_id": disco.id
+            }).toArray();
+
+            let somaNotas = 0;
+            let totalAvaliacoes = 0;
+
+            users.forEach(user => {
+                (user.avaliacoes || []).forEach(avaliacao => {
+                    if (avaliacao.item_id === disco.id) {
+                        somaNotas += avaliacao.nota;
+                        totalAvaliacoes++;
+                    }
+                });
+            });
+
+            const averageScore = totalAvaliacoes > 0
+                ? Number((somaNotas / totalAvaliacoes).toFixed(2))
+                : 0;
+
+            return res.status(200).json({
+                ...disco,
+                average_score: averageScore,
+                total_avaliacoes: totalAvaliacoes
+            });
+
+        }
+
+        // parâmetro inválido
+        else {
+            return res.status(400).json({
+                erro: "Parâmetro inválido. Indique um ano com quatro algarismos ou um ID válido."
+            });
+        }
 
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -298,7 +357,7 @@ router.get("/pesquisa/genero/:genero", async (req, res) => {
     try {
         const genero = req.params.genero.trim();
         if (genero === "") {
-            return res.status(400).json({ erro: "O género é obrigatório." });
+            return res.status(400).json({ erro: "O género é obrigatório" });
         }
 
         const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -329,7 +388,7 @@ router.get("/pesquisa/formato/:formato", async (req, res) => {
     try {
         const formato = req.params.formato.trim();
         if (formato === "") {
-            return res.status(400).json({ erro: "O formato é obrigatório." });
+            return res.status(400).json({ erro: "O formato é obrigatório" });
         }
 
         const page = Math.max(parseInt(req.query.page) || 1, 1);
@@ -356,7 +415,7 @@ router.get("/pesquisa/formato/:formato", async (req, res) => {
         ]).toArray();
 
         if (resultado.length === 0) {
-            return res.status(404).json({ erro: "Não foram encontrados discos com esse formato." });
+            return res.status(404).json({ erro: "Não foram encontrados discos com esse formato" });
         }
 
         const grupo = resultado[0];
@@ -404,7 +463,7 @@ router.post("/desconto", async (req, res) => {
             !Number.isFinite(percentagem) || percentagem <= 0 || percentagem >= 100
         ) {
             return res.status(400).json({
-                erro: "Indique um ano válido e uma percentagem entre 0 e 100."
+                erro: "Indique um ano válido e uma percentagem entre 0 e 100"
             });
         }
 
@@ -414,45 +473,7 @@ router.post("/desconto", async (req, res) => {
             { $mul: { preco_eur: multiplicador } }
         );
 
-        res.status(200).json({ mensagem: `Desconto de ${percentagem}% aplicado com sucesso.`, discos_atualizados: result.modifiedCount });
-
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// endpoint 5 GET /discos/:id
-// Pesquisar documento pelo _id. Resposta deverá incluir toda a informação do documento e o average score 
-router.get("/:id", async (req, res) => {
-    try {
-        const discoId = validarId(req.params.id);
-        if (!discoId) {
-            return res.status(400).json({ erro: "ID do disco inválido" });
-        }
-
-        const disco = await discosCollection.findOne({ _id: discoId });
-        if (!disco) {
-            return res.status(404).json({ erro: "Disco não encontrado" });
-        }
-
-        const users = await usersCollection.find({
-            "avaliacoes.item_id": disco.id
-        }).toArray();
-
-        let somaNotas = 0;
-        let totalAvaliacoes = 0;
-
-        users.forEach(user => {
-            (user.avaliacoes || []).forEach(avaliacao => {
-                if (avaliacao.item_id === disco.id) {
-                    somaNotas += avaliacao.nota;
-                    totalAvaliacoes++;
-                }
-            });
-        });
-
-        const averageScore = totalAvaliacoes > 0 ? Number((somaNotas / totalAvaliacoes).toFixed(2)) : 0;
-        res.status(200).json({ ...disco, average_score: averageScore, total_avaliacoes: totalAvaliacoes });
+        res.status(200).json({ mensagem: `Desconto de ${percentagem}% aplicado com sucesso`, discos_atualizados: result.modifiedCount });
 
     } catch (error) {
         res.status(500).json({ error: error.message });
