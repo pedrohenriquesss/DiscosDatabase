@@ -250,7 +250,6 @@ router.get("/star", async (req, res) => {
 // endpoints 5 e 14
 // GET /discos/:id ou GET /discos/:year
 // Pesquisar documento pelo _id ou discos avaliados num determinado ano
-
 router.get("/:parametro", async (req, res) => {
     try {
         const parametro = req.params.parametro;
@@ -280,16 +279,11 @@ router.get("/:parametro", async (req, res) => {
 
             const idsDiscos = avaliacoes.map(avaliacao => avaliacao._id);
 
-            const results = await discosCollection.find({
-                id: { $in: idsDiscos }
-            }).toArray();
+            const results = await discosCollection.find({ id: { $in: idsDiscos } }).toArray();
 
             return res.status(200).json({
-                page,
-                limit,
-                total: results.length,
-                totalPages: Math.ceil(results.length / limit),
-                results: results.slice(skip, skip + limit)
+                page, limit, total: results.length,
+                totalPages: Math.ceil(results.length / limit), results: results.slice(skip, skip + limit)
             });
 
         }
@@ -299,20 +293,16 @@ router.get("/:parametro", async (req, res) => {
         else if (/^[0-9a-fA-F]{24}$/.test(parametro)) {
 
             const discoId = validarId(parametro);
-
             if (!discoId) {
                 return res.status(400).json({ erro: "ID do disco inválido" });
             }
 
             const disco = await discosCollection.findOne({ _id: discoId });
-
             if (!disco) {
                 return res.status(404).json({ erro: "Disco não encontrado" });
             }
 
-            const users = await usersCollection.find({
-                "avaliacoes.item_id": disco.id
-            }).toArray();
+            const users = await usersCollection.find({ "avaliacoes.item_id": disco.id }).toArray();
 
             let somaNotas = 0;
             let totalAvaliacoes = 0;
@@ -326,23 +316,15 @@ router.get("/:parametro", async (req, res) => {
                 });
             });
 
-            const averageScore = totalAvaliacoes > 0
-                ? Number((somaNotas / totalAvaliacoes).toFixed(2))
-                : 0;
+            const averageScore = totalAvaliacoes > 0 ? Number((somaNotas / totalAvaliacoes).toFixed(2)) : 0;
 
-            return res.status(200).json({
-                ...disco,
-                average_score: averageScore,
-                total_avaliacoes: totalAvaliacoes
-            });
+            return res.status(200).json({ ...disco, average_score: averageScore, total_avaliacoes: totalAvaliacoes });
 
         }
 
         // parâmetro inválido
         else {
-            return res.status(400).json({
-                erro: "Parâmetro inválido. Indique um ano com quatro algarismos ou um ID válido."
-            });
+            return res.status(400).json({ erro: "Parâmetro inválido. Indique um ano com quatro algarismos ou um ID válido" });
         }
 
     } catch (error) {
@@ -350,7 +332,7 @@ router.get("/:parametro", async (req, res) => {
     }
 });
 
-// endpoint extra
+// endpoint extra 16
 // GET /discos/pesquisa/genero/:genero
 // Pesquisar discos por género
 router.get("/pesquisa/genero/:genero", async (req, res) => {
@@ -381,7 +363,7 @@ router.get("/pesquisa/genero/:genero", async (req, res) => {
     }
 });
 
-// endpoint extra 
+// endpoint extra 17
 // GET /discos/pesquisa/formato/:formato
 // Pesquisar por formato (vinil, cd, etc) e calcular preço médio
 router.get("/pesquisa/formato/:formato", async (req, res) => {
@@ -430,7 +412,7 @@ router.get("/pesquisa/formato/:formato", async (req, res) => {
     }
 });
 
-// endpoint extra
+// endpoint extra 18
 // GET /discos/estatisticas/estado
 // Quantidade de discos por estado
 router.get("/estatisticas/estado", async (req, res) => {
@@ -452,7 +434,7 @@ router.get("/estatisticas/estado", async (req, res) => {
     }
 });
 
-// endpoint extra
+// endpoint extra 19
 // POST /discos/desconto
 // Aplicar desconto aos discos lançados antes de determinado ano
 router.post("/desconto", async (req, res) => {
@@ -480,7 +462,6 @@ router.post("/desconto", async (req, res) => {
     }
 });
 
-// ---------------------------------------------------------
 // endpoint 9 PUT /discos/:id
 // Update disco
 router.put("/:id", async (req, res) => {
